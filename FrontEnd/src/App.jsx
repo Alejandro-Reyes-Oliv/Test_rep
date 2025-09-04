@@ -1,16 +1,17 @@
-import { useEffect, useState } from 'react'
-import './App.css'
+import { useEffect, useState } from "react";
+import "./App.css";
 import AppointmentsPage from "./pages/CitasPage";
+import UsersPage from "./pages/UsersPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
-import { getCurrentUser, login, logout } from "./services/auth.js";
+import { getCurrentUser, login, logout, isAdmin } from "./services/auth.js";
 
-function App() {
+export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loggingIn, setLoggingIn] = useState(false);
+  const [tab, setTab] = useState("citas");
 
   useEffect(() => {
-    // Cargar sesión almacenada
     const u = getCurrentUser();
     setUser(u);
     setLoading(false);
@@ -19,8 +20,9 @@ function App() {
   const handleLogin = async ({ username, password }) => {
     setLoggingIn(true);
     try {
-      const u = await login({ username, password });
+      const u = await login(username, password);
       setUser(u);
+      setTab("citas");
     } finally {
       setLoggingIn(false);
     }
@@ -31,23 +33,28 @@ function App() {
     setUser(null);
   };
 
-  if (loading) return <div className="p-4">Cargando…</div>;
+  if (loading) {
+    return <div className="p-6">Cargando…</div>;
+  }
 
   if (!user) {
     return (
       <LoginPage
         loading={loggingIn}
         onSubmit={handleLogin}
-        onSuccess={() => { /* el estado user se actualiza en handleLogin */ }}
+        onError={(m) => console.error(m)}
       />
     );
   }
 
   return (
     <div className="min-h-screen">
-      <div className="w-full flex justify-end p-3 border-b">
+      <div className="flex items-center justify-between border-b px-4 py-3">
+        <div className="font-semibold">Panel del Sistema</div>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-600">{user.name}</span>
+          <span className="text-sm text-gray-600">
+            {user.name} ({user.role || user.username})
+          </span>
           <button
             onClick={handleLogout}
             className="text-sm px-3 py-1 rounded border hover:bg-gray-50"
@@ -56,10 +63,29 @@ function App() {
           </button>
         </div>
       </div>
+
+      <div className="border-b px-4">
+        {isAdmin(user) && (
+          <div className="flex gap-2">
+            <button
+              className={"px-3 py-2 " + (tab === "citas" ? "border-b-2 border-black" : "")}
+              onClick={() => setTab("citas")}
+            >
+              Citas
+            </button>
+            <button
+              className={"px-3 py-2 " + (tab === "usuarios" ? "border-b-2 border-black" : "")}
+              onClick={() => setTab("usuarios")}
+            >
+              Usuarios
+            </button>
+          </div>
+        )}
+      </div>
+
       <div className="p-4">
-        <AppointmentsPage />
+        {tab === "usuarios" && isAdmin(user) ? <UsersPage /> : <AppointmentsPage />}
       </div>
     </div>
   );
 }
-export default App;
